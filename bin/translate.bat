@@ -8,5 +8,5 @@ call "%SCRIPT_DIR%argos-env\Scripts\activate.bat"
 :: Install tkinter if missing
 python -c "import tkinter" || python -m pip install tk
 
-python "%SCRIPT_DIR%script.py"
+python "%SCRIPT_DIR%..\lib\srt-translator.py"
 pause
