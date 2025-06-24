@@ -2,11 +2,6 @@
 
 > 🌍 Batch translation toolkit for SRT subtitles using Argos Translate
 
-## Important information:
-
-- This was only tested on Windows.
-- This script is meant to work **only** if you have just one language model installed.
-
 ## ⚠️ Important Information
 
 - 💻 **Only tested on Windows**
