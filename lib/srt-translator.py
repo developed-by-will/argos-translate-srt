@@ -41,9 +41,10 @@ def translate_srt_content(content, translator):
             translated_lines.append(translator.translate(line))
     return '\n'.join(translated_lines)
 
-def clean_filename(filename):
-    filename = re.sub(r'\.(en|eng|es|fr|de|it|pt)(?=\.srt$)', '', filename, flags=re.IGNORECASE)
-    return filename.replace('.srt', '.pt.srt')
+def clean_filename(filename, target_lang_code):
+    # Remove any existing language codes
+    filename = re.sub(r'\.[a-z]{2,3}(?=\.srt$)', '', filename, flags=re.IGNORECASE)
+    return filename.replace('.srt', f'.{target_lang_code}.srt')
 
 def update_progress(current, total, filename):
     percent = int((current/total)*100)
@@ -62,12 +63,13 @@ def main():
             return
         
         en_to_pt = installed_languages[0].get_translation(installed_languages[1])
+        target_lang_code = installed_languages[1].code  # Get the target language code
         
         # Get folder from user selection
         parent_dir = select_folder()
         print(f"{Colors.YELLOW}Selected folder: {parent_dir}{Colors.END}")
 
-        srt_files = [f for f in parent_dir.glob('*.srt') if not f.name.endswith('.pt.srt')]
+        srt_files = [f for f in parent_dir.glob('*.srt') if not f.name.lower().endswith(f'.{target_lang_code}.srt')]
         total_files = len(srt_files)
         
         if total_files == 0:
@@ -81,7 +83,7 @@ def main():
                 update_progress(i-1, total_files, filepath.name)
                 content = filepath.read_text(encoding='utf-8')
                 translated_content = translate_srt_content(content, en_to_pt)
-                output_filename = clean_filename(filepath.name)
+                output_filename = clean_filename(filepath.name, target_lang_code)
                 output_path = filepath.with_name(output_filename)
                 output_path.write_text(translated_content, encoding='utf-8')
                 sys.stdout.write('\r' + ' ' * 100 + '\r')
