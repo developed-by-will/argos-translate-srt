@@ -6,10 +6,11 @@
 
 - 💻 **Only tested on Windows**
 - 1️⃣ Designed to work with **single language model installations**
+- 🐍 Does not support Python 3.13
 
 ## 🛠️ Requirements
 
-- 🐍 **Python 3.8+** with PATH configured
+- 🐍 **Python 3.12+** with PATH configured and with admin privileges when installing py.exe [Download here](https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe)
 
 ## ✨ Features
 
