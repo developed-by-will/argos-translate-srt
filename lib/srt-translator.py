@@ -19,14 +19,17 @@ def setup_console():
         kernel32 = ctypes.windll.kernel32
         kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
 
-def select_folder():
+def select_files():
     root = tk.Tk()
     root.withdraw()  # Hide the main window
-    folder = filedialog.askdirectory(title="Select folder containing .srt files")
-    if not folder:
-        print(f"{Colors.RED}No folder selected. Exiting.{Colors.END}")
+    files = filedialog.askopenfilenames(
+        title="Select .srt file(s) to translate",
+        filetypes=[("Subtitle files", "*.srt"), ("All files", "*.*")]
+    )
+    if not files:
+        print(f"{Colors.RED}No files selected. Exiting.{Colors.END}")
         sys.exit(0)
-    return Path(folder)
+    return [Path(f) for f in files]
 
 def is_timing_line(line):
     return re.match(r'^\d+$|^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$', line.strip())
@@ -65,15 +68,18 @@ def main():
         en_to_pt = installed_languages[0].get_translation(installed_languages[1])
         target_lang_code = installed_languages[1].code  # Get the target language code
         
-        # Get folder from user selection
-        parent_dir = select_folder()
-        print(f"{Colors.YELLOW}Selected folder: {parent_dir}{Colors.END}")
-
-        srt_files = [f for f in parent_dir.glob('*.srt') if not f.name.lower().endswith(f'.{target_lang_code}.srt')]
+        # Get files from user selection
+        srt_files = select_files()
+        print(f"{Colors.YELLOW}Selected files:{Colors.END}")
+        for f in srt_files:
+            print(f"  - {f.name}")
+        
+        # Filter out files that already have the target language code
+        srt_files = [f for f in srt_files if not f.name.lower().endswith(f'.{target_lang_code}.srt')]
         total_files = len(srt_files)
         
         if total_files == 0:
-            print(f"{Colors.RED}No .srt files found in selected folder{Colors.END}")
+            print(f"{Colors.RED}No valid .srt files to translate (may already be translated){Colors.END}")
             return
         
         print(f"\nFound {total_files} files to translate\n")
