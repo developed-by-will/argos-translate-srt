@@ -34,14 +34,37 @@ def select_files():
 def is_timing_line(line):
     return re.match(r'^\d+$|^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$', line.strip())
 
+def clean_text(line):
+    # Remove all "- " prefixes
+    line = re.sub(r'^-\s*', '', line)
+    # Remove all text within square brackets (including nested brackets)
+    line = re.sub(r'\[.*?\]', '', line)
+    return line.strip()
+
 def translate_srt_content(content, translator):
     lines = content.split('\n')
     translated_lines = []
-    for line in lines:
-        if is_timing_line(line) or not line.strip():
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        if is_timing_line(line):
+            # Add the line number or timing line
             translated_lines.append(line)
+            i += 1
+            # Process the text lines that follow
+            text_lines = []
+            while i < len(lines) and lines[i].strip() and not is_timing_line(lines[i]):
+                cleaned_line = clean_text(lines[i])
+                if cleaned_line:
+                    text_lines.append(cleaned_line)
+                i += 1
+            # Only translate and add if there's text remaining
+            if text_lines:
+                translated_text = translator.translate(' '.join(text_lines))
+                translated_lines.append(translated_text)
         else:
-            translated_lines.append(translator.translate(line))
+            translated_lines.append(line)
+            i += 1
     return '\n'.join(translated_lines)
 
 def clean_filename(filename, target_lang_code):
