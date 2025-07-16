@@ -78,6 +78,11 @@ def update_progress(current, total, filename):
     sys.stdout.write(f"\r{Colors.BLUE}{progress_bar} {percent}% {filename[:30]+'...' if len(filename)>30 else filename}{Colors.END}")
     sys.stdout.flush()
 
+def clean_srt_whitespace(content):
+    lines = content.splitlines()
+    cleaned_lines = [line.strip() for line in lines]
+    return '\n'.join(cleaned_lines) + '\n'
+
 def main():
     try:
         setup_console()
@@ -112,9 +117,14 @@ def main():
                 update_progress(i-1, total_files, filepath.name)
                 content = filepath.read_text(encoding='utf-8')
                 translated_content = translate_srt_content(content, en_to_pt)
+                
+                # 🧼 Clean extra whitespace after translation
+                cleaned_translated = clean_srt_whitespace(translated_content)
+                
                 output_filename = clean_filename(filepath.name, target_lang_code)
                 output_path = filepath.with_name(output_filename)
-                output_path.write_text(translated_content, encoding='utf-8')
+                output_path.write_text(cleaned_translated, encoding='utf-8')
+                
                 sys.stdout.write('\r' + ' ' * 100 + '\r')
                 print(f"{Colors.GREEN}✓ {output_path.name}{Colors.END}")
             except Exception as e:
