@@ -5,8 +5,7 @@
 ## ⚠️ Important Information
 
 - 💻 **Only tested on Windows**
-- 1️⃣ Designed to work with **single language model installations**
-- 🐍 Does not support Python 3.13
+- 🐍 **Only supports Python up to version 3.12.x**
 
 ## 🛠️ Requirements
 
@@ -14,17 +13,19 @@
 
 ## ✨ Features
 
-- 📁 One-click translation of entire subtitle folders
+- 📁 Translate one or multiple .srt files at a time
+- 1️⃣ Works with multiple language model installations
 - ⏱️ Preserves SRT timing/metadata
 - 📊 Progress tracking with visual feedback
-- 🔍 Automatic language detection
+- 🔍 Automatic language code detection
 - ⚡ Fast subsequent runs after initial setup
 
 ## How to use
 
-1. Open `GUI.bat` and download the language model you will be using (download just one).
+1. Open `GUI.bat` and download the language models you will be using.
 2. Open `translate.bat`.
-3. Select the directory with the .srt files you want to translate.
+3. Select the .srt files you want to translate.
+4. That's it! 🎉
 
 Notes:
 
