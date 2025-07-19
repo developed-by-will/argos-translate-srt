@@ -29,10 +29,18 @@ def detect_encoding(filepath):
 def select_files():
     root = tk.Tk()
     root.withdraw()
+    
+    # Force the file dialog to stay on top
+    root.attributes('-topmost', True)
+    
     files = filedialog.askopenfilenames(
         title="Select .srt file(s) to translate",
         filetypes=[("Subtitle files", "*.srt"), ("All files", "*.*")]
     )
+    
+    # Reset topmost after selection to avoid lingering effects
+    root.attributes('-topmost', False)
+    
     if not files:
         print(f"{Colors.RED}No files selected. Exiting.{Colors.END}")
         sys.exit(0)
