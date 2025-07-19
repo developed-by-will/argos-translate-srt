@@ -1,10 +1,10 @@
-import os
 import re
 import sys
 from pathlib import Path
 from argostranslate import translate
 import tkinter as tk
 from tkinter import filedialog
+import argostranslate.package
 
 class Colors:
     YELLOW = '\033[93m'
@@ -21,7 +21,7 @@ def setup_console():
 
 def select_files():
     root = tk.Tk()
-    root.withdraw()  # Hide the main window
+    root.withdraw()
     files = filedialog.askopenfilenames(
         title="Select .srt file(s) to translate",
         filetypes=[("Subtitle files", "*.srt"), ("All files", "*.*")]
@@ -35,11 +35,53 @@ def is_timing_line(line):
     return re.match(r'^\d+$|^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$', line.strip())
 
 def clean_text(line):
-    # Remove all "- " prefixes
-    line = re.sub(r'^-\s*', '', line)
-    # Remove all text within square brackets (including nested brackets)
-    line = re.sub(r'\[.*?\]', '', line)
+    """Remove ALL HTML tags, hyphens, and square brackets"""
+    line = re.sub(r'<[^>]+>', '', line)  # Remove ALL HTML tags
+    line = re.sub(r'^-\s*', '', line)    # Remove leading hyphens
+    line = re.sub(r'\[.*?\]', '', line)  # Remove square bracket content
     return line.strip()
+
+def get_available_pairs(installed_languages):
+    """Check actual installed packages on disk"""
+    available_pairs = []
+    installed_codes = {lang.code for lang in installed_languages}
+    
+    # Get installed packages from Argos Translate
+    packages = argostranslate.package.get_installed_packages()
+    
+    for pkg in packages:
+        from_code = pkg.from_code
+        to_code = pkg.to_code
+        
+        if from_code in installed_codes and to_code in installed_codes:
+            available_pairs.append(f"{from_code} → {to_code}")
+    
+    return available_pairs
+
+def select_translation_direction(installed_languages):
+    print("\nAvailable language pairs:")
+    pairs = get_available_pairs(installed_languages)
+    
+    if not pairs:
+        print(f"{Colors.RED}No valid translation pairs found!{Colors.END}")
+        sys.exit(1)
+    
+    for i, pair in enumerate(sorted(pairs), 1):
+        print(f"{i}. {pair}")
+    
+    while True:
+        try:
+            choice = int(input("\nSelect language pair (number): ")) - 1
+            selected_pair = sorted(pairs)[choice]
+            from_code, to_code = selected_pair.split(" → ")
+            
+            from_lang = next(lang for lang in installed_languages if lang.code == from_code)
+            to_lang = next(lang for lang in installed_languages if lang.code == to_code)
+            
+            return from_lang.get_translation(to_lang), to_code
+        
+        except (ValueError, IndexError):
+            print(f"{Colors.RED}Invalid selection. Please try again.{Colors.END}")
 
 def translate_srt_content(content, translator):
     lines = content.split('\n')
@@ -48,19 +90,20 @@ def translate_srt_content(content, translator):
     while i < len(lines):
         line = lines[i]
         if is_timing_line(line):
-            # Add the line number or timing line
             translated_lines.append(line)
             i += 1
-            # Process the text lines that follow
             text_lines = []
             while i < len(lines) and lines[i].strip() and not is_timing_line(lines[i]):
                 cleaned_line = clean_text(lines[i])
                 if cleaned_line:
                     text_lines.append(cleaned_line)
                 i += 1
-            # Only translate and add if there's text remaining
             if text_lines:
-                translated_text = translator.translate(' '.join(text_lines))
+                text_to_translate = ' '.join(text_lines)
+                translated_text = translator.translate(text_to_translate)
+                
+                # Remove unwanted additions
+                translated_text = re.sub(r'\* I\'m sorry \*|\.{3,}$', '', translated_text).strip()
                 translated_lines.append(translated_text)
         else:
             translated_lines.append(line)
@@ -68,9 +111,8 @@ def translate_srt_content(content, translator):
     return '\n'.join(translated_lines)
 
 def clean_filename(filename, target_lang_code):
-    # Remove any existing language codes
-    filename = re.sub(r'\.[a-z]{2,3}(?=\.srt$)', '', filename, flags=re.IGNORECASE)
-    return filename.replace('.srt', f'.{target_lang_code}.srt')
+    filename = re.sub(r'(\.[a-z]{2,3})?\.srt$', f'.{target_lang_code}.srt', filename, flags=re.IGNORECASE)
+    return filename
 
 def update_progress(current, total, filename):
     percent = int((current/total)*100)
@@ -89,25 +131,26 @@ def main():
         
         installed_languages = translate.get_installed_languages()
         if len(installed_languages) < 2:
-            print(f"{Colors.RED}Error: No language model installed.{Colors.END}")
-            print(f"{Colors.YELLOW}Please install it through the GUI first.{Colors.END}")
+            print(f"{Colors.RED}Error: Need at least 2 language models installed.{Colors.END}")
+            print(f"{Colors.YELLOW}Please install language models first.{Colors.END}")
             return
         
-        en_to_pt = installed_languages[0].get_translation(installed_languages[1])
-        target_lang_code = installed_languages[1].code  # Get the target language code
+        translator, target_lang_code = select_translation_direction(installed_languages)
         
-        # Get files from user selection
         srt_files = select_files()
         print(f"{Colors.YELLOW}Selected files:{Colors.END}")
         for f in srt_files:
             print(f"  - {f.name}")
         
-        # Filter out files that already have the target language code
-        srt_files = [f for f in srt_files if not f.name.lower().endswith(f'.{target_lang_code}.srt')]
+        srt_files = [f for f in srt_files 
+                    if f.suffix.lower() == '.srt' 
+                    and not f.name.lower().endswith(f'.{target_lang_code}.srt')]
+        
         total_files = len(srt_files)
         
         if total_files == 0:
             print(f"{Colors.RED}No valid .srt files to translate (may already be translated){Colors.END}")
+            print(f"{Colors.YELLOW}Target language code: {target_lang_code}{Colors.END}")
             return
         
         print(f"\nFound {total_files} files to translate\n")
@@ -116,9 +159,7 @@ def main():
             try:
                 update_progress(i-1, total_files, filepath.name)
                 content = filepath.read_text(encoding='utf-8')
-                translated_content = translate_srt_content(content, en_to_pt)
-                
-                # 🧼 Clean extra whitespace after translation
+                translated_content = translate_srt_content(content, translator)
                 cleaned_translated = clean_srt_whitespace(translated_content)
                 
                 output_filename = clean_filename(filepath.name, target_lang_code)
