@@ -5,6 +5,7 @@ from argostranslate import translate
 import tkinter as tk
 from tkinter import filedialog
 import argostranslate.package
+import chardet
 
 class Colors:
     YELLOW = '\033[93m'
@@ -18,6 +19,12 @@ def setup_console():
         import ctypes
         kernel32 = ctypes.windll.kernel32
         kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+
+def detect_encoding(filepath):
+    with open(filepath, 'rb') as f:
+        rawdata = f.read(10000)  # Read first 10k bytes to guess encoding
+    result = chardet.detect(rawdata)
+    return result['encoding'] if result['confidence'] > 0.7 else None
 
 def select_files():
     root = tk.Tk()
@@ -158,7 +165,24 @@ def main():
         for i, filepath in enumerate(srt_files, 1):
             try:
                 update_progress(i-1, total_files, filepath.name)
-                content = filepath.read_text(encoding='utf-8')
+                
+                # Detect and handle file encoding
+                encoding = detect_encoding(filepath)
+                if not encoding:
+                    encoding = 'utf-8'  # fallback
+                
+                # Try reading with detected encoding, then common alternatives
+                content = None
+                for enc in [encoding, 'utf-8', 'latin-1', 'windows-1252']:
+                    try:
+                        content = filepath.read_text(encoding=enc)
+                        break
+                    except UnicodeDecodeError:
+                        continue
+                
+                if content is None:
+                    raise UnicodeDecodeError(f"Could not decode {filepath.name} with any supported encoding")
+                
                 translated_content = translate_srt_content(content, translator)
                 cleaned_translated = clean_srt_whitespace(translated_content)
                 
