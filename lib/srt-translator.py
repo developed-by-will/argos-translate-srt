@@ -50,11 +50,12 @@ def is_timing_line(line):
     return re.match(r'^\d+$|^\d{2}:\d{2}:\d{2},\d{3} --> \d{2}:\d{2}:\d{2},\d{3}$', line.strip())
 
 def clean_text(line):
-    """Remove ALL HTML tags, hyphens, and square brackets"""
+    """Remove ALL HTML tags, hyphens, and square brackets WITHOUT changing casing"""
     line = re.sub(r'<[^>]+>', '', line)  # Remove ALL HTML tags
     line = re.sub(r'^-\s*', '', line)    # Remove leading hyphens
     line = re.sub(r'\[.*?\]', '', line)  # Remove square bracket content
-    return line.strip()
+    # Don't strip() here - preserve original casing and spacing for translation
+    return line
 
 def get_available_pairs(installed_languages):
     """Check actual installed packages on disk"""
@@ -110,15 +111,17 @@ def translate_srt_content(content, translator):
             text_lines = []
             while i < len(lines) and lines[i].strip() and not is_timing_line(lines[i]):
                 cleaned_line = clean_text(lines[i])
-                if cleaned_line:
+                if cleaned_line.strip():  # Only add non-empty lines after cleaning
                     text_lines.append(cleaned_line)
                 i += 1
             if text_lines:
                 text_to_translate = ' '.join(text_lines)
                 translated_text = translator.translate(text_to_translate)
                 
-                # Remove unwanted additions
-                translated_text = re.sub(r'\* I\'m sorry \*|\.{3,}$', '', translated_text).strip()
+                # Remove unwanted additions while preserving casing
+                translated_text = re.sub(r'\* I\'m sorry \*|\.{3,}$', '', translated_text)
+                # Only strip trailing/leading whitespace, don't lowercase
+                translated_text = translated_text.strip()
                 translated_lines.append(translated_text)
         else:
             translated_lines.append(line)
@@ -136,8 +139,16 @@ def update_progress(current, total, filename):
     sys.stdout.flush()
 
 def clean_srt_whitespace(content):
+    """Clean whitespace without affecting text casing"""
     lines = content.splitlines()
-    cleaned_lines = [line.strip() for line in lines]
+    cleaned_lines = []
+    for line in lines:
+        # Only strip entire lines if they're timing lines or numbers
+        if is_timing_line(line) or re.match(r'^\d+$', line.strip()):
+            cleaned_lines.append(line.strip())
+        else:
+            # For text lines, preserve internal spacing but clean up excessive whitespace
+            cleaned_lines.append(' '.join(line.split()))
     return '\n'.join(cleaned_lines) + '\n'
 
 def main():
