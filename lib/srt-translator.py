@@ -10,23 +10,35 @@ import argostranslate.package
 import chardet
 import pycountry
 
+# -------------------------
+# COLORS & CONSOLE
+# -------------------------
 class Colors:
     YELLOW = '\033[93m'
-    GREEN = '\033[92m'
-    BLUE = '\033[94m'
-    RED = '\033[91m'
-    END = '\033[0m'
+    GREEN  = '\033[92m'
+    BLUE   = '\033[94m'
+    RED    = '\033[91m'
+    END    = '\033[0m'
 
 TEXT_SUB_CODECS = {"subrip", "ass", "ssa", "mov_text", "text", "webvtt"}
+SUB_FILE_EXTENSIONS = [".srt", ".ass", ".ssa", ".vtt", ".txt"]
+
+def setup_console():
+    if sys.platform == "win32":
+        import ctypes
+        kernel32 = ctypes.windll.kernel32
+        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
+
+def update_progress(current, total, name):
+    percent = int((current / total) * 100)
+    bar = "[" + "#" * int(percent/2) + " " * (50 - int(percent/2)) + "]"
+    sys.stdout.write(f"\r{Colors.BLUE}{bar} {percent}% {name[:30]}{Colors.END}")
+    sys.stdout.flush()
 
 # -------------------------
 # LANGUAGE NORMALIZATION
 # -------------------------
 def normalize_lang(code):
-    """
-    Convert a 3-letter ISO-639-2 code to a 2-letter ISO-639-1 code
-    if possible, otherwise return lowercase as-is.
-    """
     code = code.lower()
     if len(code) == 2:
         return code
@@ -39,21 +51,6 @@ def normalize_lang(code):
     return code
 
 # -------------------------
-# CONSOLE & PROGRESS
-# -------------------------
-def setup_console():
-    if sys.platform == "win32":
-        import ctypes
-        kernel32 = ctypes.windll.kernel32
-        kernel32.SetConsoleMode(kernel32.GetStdHandle(-11), 7)
-
-def update_progress(current, total, name):
-    percent = int((current / total) * 100)
-    bar = '[' + '#' * int(percent/2) + ' ' * (50 - int(percent/2)) + ']'
-    sys.stdout.write(f"\r{Colors.BLUE}{bar} {percent}% {name[:30]}{Colors.END}")
-    sys.stdout.flush()
-
-# -------------------------
 # FILE DIALOGS
 # -------------------------
 def file_dialog(title, types):
@@ -64,15 +61,21 @@ def file_dialog(title, types):
     root.attributes('-topmost', False)
     return [Path(f) for f in files]
 
-def select_srt_files():
-    files = file_dialog("Select SRT files", [("Subtitle files","*.srt"), ("All files","*.*")])
+def select_subtitle_files():
+    files = file_dialog(
+        "Select subtitle files",
+        [("Subtitle files","*.srt *.ass *.ssa *.vtt *.txt"), ("All files","*.*")]
+    )
     if not files:
         print(f"{Colors.RED}No files selected.{Colors.END}")
         sys.exit()
     return files
 
 def select_video_files():
-    return file_dialog("Select video files", [("Video files","*.mkv *.mp4 *.avi *.mov"), ("All files","*.*")])
+    return file_dialog(
+        "Select video files",
+        [("Video files","*.mkv *.mp4 *.avi *.mov"), ("All files","*.*")]
+    )
 
 # -------------------------
 # ENCODING DETECTION
@@ -107,7 +110,7 @@ def get_subtitle_streams(video):
             continue
         index = stream["index"]
         lang = stream.get("tags", {}).get("language", "unknown")
-        streams.append((index, normalize_lang(lang), codec))  # normalize here
+        streams.append((index, normalize_lang(lang), codec))
     return streams
 
 # -------------------------
@@ -151,7 +154,7 @@ def extract_subtitles():
 # TRANSLATION
 # -------------------------
 def is_timing(line):
-    return re.match(r'^\d+$|^\d{2}:\d{2}:\d{2},', line.strip())
+    return re.match(r'^\d+$|^\d{2}:\d{2}:\d{2},', line.strip()) or line.strip().startswith("Dialogue:")
 
 def clean_text(line):
     line = re.sub(r'<[^>]+>', '', line)
@@ -186,14 +189,14 @@ def choose_translation(langs):
         except:
             print("Invalid selection")
 
-def translate_srt(files=None):
+def translate_subtitles(files=None):
     langs = translate.get_installed_languages()
     if len(langs) < 2:
         print("Need 2 language models installed.")
         return
     translator, source_lang, target_lang = choose_translation(langs)
     if files is None:
-        files = select_srt_files()
+        files = select_subtitle_files()
     total = len(files)
     print(f"\nTranslating {total} files\n")
     for i, file in enumerate(files, 1):
@@ -222,7 +225,8 @@ def translate_srt(files=None):
                 out.append(line)
                 i2 += 1
         result = "\n".join(out)
-        new_name = re.sub(r'(\.[a-z]{2,3})?\.srt$', f'.{target_lang}.srt', file.name, flags=re.I)
+        new_name = re.sub(r'(\.[a-z]{2,3})?(\.srt|\.ass|\.ssa|\.vtt|\.txt)$',
+                          f'.{target_lang}.srt', file.name, flags=re.I)
         file.with_name(new_name).write_text(result, encoding="utf-8")
         sys.stdout.write('\r'+' '*100+'\r')
         print(f"{Colors.GREEN}✓ {new_name}{Colors.END}")
@@ -234,11 +238,11 @@ def translate_srt(files=None):
 # -------------------------
 def main():
     setup_console()
-    print("\n1. Translate SRT files")
+    print("\n1. Translate subtitle files")
     print("2. Extract subtitles from videos")
     choice = input("\nSelect option: ")
     if choice == "1":
-        translate_srt()
+        translate_subtitles()
     elif choice == "2":
         langs = translate.get_installed_languages()
         translator, source_lang, target_lang = choose_translation(langs)
@@ -255,7 +259,7 @@ def main():
             print(f"\n{Colors.YELLOW}{target_lang.upper()} version was missing, do you want to translate? (y/n){Colors.END}")
             answer = input("> ").lower()
             if answer == "y":
-                translate_srt(extracted_files)
+                translate_subtitles(extracted_files)
         else:
             print(f"\n{Colors.RED}Expected source language ({source_lang.upper()}) was not found in extracted subtitles.{Colors.END}")
     else:
