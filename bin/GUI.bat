@@ -15,7 +15,7 @@ if not exist "%VENV_DIR%" (
 
 :: Activate and install specific packages
 call "%VENV_DIR%\Scripts\activate.bat"
-python -m pip install argostranslate argostranslategui argos-translate-files
+python -m pip install argostranslate argostranslategui argos-translate-files pycountry
 
 :: Launch GUI
 python "%SCRIPT_DIR%argos-env\Scripts\argos-translate-gui"
