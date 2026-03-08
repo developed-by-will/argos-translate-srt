@@ -7,6 +7,12 @@
 - 💻 **Only tested on Windows**
 - 🐍 **Only supports Python up to version 3.12.x**
 
+If you were using argus-translate-srt, please note:
+- You must run update-dependencies.bat before using this new version (Jellingo).
+- This ensures that all required packages and the updated Argos Translate integration are correctly installed.
+
+Skipping this step may cause errors when extracting or translating subtitles.
+
 ## 🛠️ Requirements
 
 - 🐍 **Python 3.12+** with PATH configured and with admin privileges when installing py.exe [Download here](https://www.python.org/ftp/python/3.12.10/python-3.12.10-amd64.exe)
