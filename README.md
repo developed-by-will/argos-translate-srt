@@ -1,6 +1,6 @@
-# 🎬 Argos Translate SRT
+# 🎬 Jellingo - Formerly argus-translate-srt
 
-> 🌍 Batch translation toolkit for SRT subtitles using Argos Translate
+> 🌍 Complete toolkit for subtitles managing
 
 ## ⚠️ Important Information
 
@@ -13,11 +13,14 @@
 
 ## ✨ Features
 
-- 📁 Translate one or multiple .srt files at a time
+- 📁 Translate one or multiple subtitle files at a time
+- 🎬 Video subtitle extraction – Extract embedded subtitles from your video files (.mkv, .mp4, .avi, .mov)
+- 📝 Multi-format support – Translate .ass, .ssa, .vtt, and plain text subtitles in addition to .srt
 - 1️⃣ Works with multiple language model installations
-- ⏱️ Preserves SRT timing/metadata
+- ⏱️ Preserves timing/metadata
 - 📊 Progress tracking with visual feedback
 - 🔍 Automatic language code detection
+- 🔄 Smart translation prompts – Detects if subtitles already exist for your chosen languages and asks if you want to translate missing ones
 - ⚡ Fast subsequent runs after initial setup
 
 ## How to use
